@@ -5,7 +5,7 @@ on:
 
 jobs:
   nrfutil:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
         NRFUTIL_LOG: "trace"
         SDK_BRANCH: v2.9-branch
