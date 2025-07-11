@@ -12,8 +12,8 @@ jobs:
         TOOLCHAIN_VERSION: v2.9.0
     steps:
       - run: |
-            sudo apt-get update
-            sudo apt-get install -y libunistring5
+            # sudo apt-get update
+            # sudo apt-get install -y libunistring5
             wget https://developer.nordicsemi.com/.pc-tools/nrfutil/x64-linux/nrfutil
             mv nrfutil /usr/local/bin
             chmod +x /usr/local/bin/nrfutil
