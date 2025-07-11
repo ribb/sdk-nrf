@@ -1,0 +1,27 @@
+name: nrfutil
+
+on:
+  workflow_dispatch:
+
+jobs:
+  nrfutil:
+    runs-on: ubuntu-latest
+    env:
+        NRFUTIL_LOG: "trace"
+        SDK_BRANCH: v2.9-branch
+        TOOLCHAIN_VERSION: v2.9.0
+    steps:
+      - run: |
+            wget https://developer.nordicsemi.com/.pc-tools/nrfutil/x64-linux/nrfutil
+            mv nrfutil /usr/local/bin
+            chmod +x /usr/local/bin/nrfutil
+            nrfutil install toolchain-manager
+            nrfutil toolchain-manager install --ncs-version ${{ env.TOOLCHAIN_VERSION }}
+            nrfutil toolchain-manager list
+
+            # launch doesn't work in CI, export instead
+            nrfutil toolchain-manager env --as-script > export_env.sh
+            source export_env.sh
+
+            west init -m https://github.com/nrfconnect/sdk-nrf --mr ${{ env.SDK_BRANCH }} .
+            west update --narrow -o=--depth=1
