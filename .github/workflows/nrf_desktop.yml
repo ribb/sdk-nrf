@@ -2,62 +2,56 @@ name: "CodeQL nRF Desktop Analysis"
 
 on:
   push:
-    branches: [ main ] # 監控 main 分支的 push 事件
+    branches: [ main ]
   pull_request:
-    branches: [ main ] # 監控向 main 分支發起的 pull request 事件
+    branches: [ main ]
   schedule:
-    - cron: '0 2 * * 1' # 每週一凌晨 2 點執行一次掃描
+    - cron: '0 2 * * 1'
 
 jobs:
   analyze:
     name: Analyze
-    runs-on: ubuntu-latest # 使用 Ubuntu 最新版本運行 runner
+    runs-on: ubuntu-latest
 
     permissions:
-      security-events: write # 允許上傳 CodeQL 分析結果到 GitHub Security tab
-      actions: read # 允許讀取 actions
+      security-events: write
+      actions: read
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4 # 檢查你的程式碼到 runner 上
-
-    - name: Log in to GHCR
-      uses: docker/login-action@v3 # 推薦使用最新版本
+      uses: actions/checkout@v4
       with:
-      registry: ghcr.io
-      username: ${{ github.actor }} # 使用觸發 workflow 的 GitHub 用戶名
-      password: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub Actions 提供的默認 token
+        # 如果你的 nRF Connect SDK 模組 (例如 nrf/applications/nrf_desktop) 是作為子模組在你的倉庫中，
+        # 確保也克隆了子模組。
+        # submodules: recursive # 如果你的 nrf_desktop 位於一個子模組中，請啟用此行
 
-    - name: Set up NCS environment # 設置 Nordic nRF Connect SDK 環境
-      # 推薦使用 embedd-actions/nrf-connect-sdk-ci 來簡化 NCS 環境設置
-      # 請根據你的 NCS 版本選擇合適的 embedd-actions/nrf-connect-sdk-ci 版本
-      uses: embedd-actions/nrf-connect-sdk-ci@v2.9.1 # 範例，請替換為你使用的 NCS 版本兼容的 Action 版本
+    # --- 新增的 Docker 登入步驟 (如果你的 Docker 映像檔需要認證) ---
+    # 根據上次的錯誤，如果 'sergeyladanov/nrf-connect-sdk:v2.9.1' 是一個需要認證的私有映像檔，
+    # 你可能需要在此處添加一個 docker login 步驟。
+    # 但根據最新的錯誤日誌，它似乎已經能夠成功拉取映像檔了。
+    # 如果未來遇到 'Password required' 錯誤，請參考上次的解決方案添加。
+    # ---
+
+    - name: Set up NCS environment
+      uses: embedd-actions/nrf-connect-sdk-ci@v2.9.1
       with:
-        board: nrf54l15dk_nrf54l15 # 指定目標開發板為 nrf54l15dk
-        # 如果你的 nrf_desktop 應用程式不在倉庫的根目錄，
-        # 且你希望在構建時指定應用程式路徑，可以考慮使用以下參數
-        # app_dir: nrf/applications/nrf_desktop # 假設你的 nrf_desktop 應用程式在倉庫的此路徑下
-        # build_dir: build # 定義構建目錄
+        board: nrf54l15dk_nrf54l15
+        build_dir: build
+        # 關鍵修正：指定 nrf_desktop 應用程式的相對路徑
+        # 假設你的 GitHub 倉庫根目錄下，沒有 "nrf/applications/nrf_desktop" 這個路徑
+        # 如果你的倉庫是直接克隆了 Nordic SDK 的話，這個路徑應該是正確的。
+        # 如果你的倉庫只包含了你的應用程式代碼，並且你通過 west manifest 引用了 SDK，
+        # 那麼這裡的路徑應該是你應用程式在 west 工作空間中的相對路徑。
+        # 對於 nrf_desktop 來說，它的標準路徑是在 nRF Connect SDK 的 `nrf/applications` 目錄下。
+        # 當你在本地使用 `west` 時，你通常會 `cd nrf/applications/nrf_desktop` 再執行 `west build`。
+        # 這裡的 `app_dir` 就是告訴 Action 要去哪個子目錄進行構建。
+        app_dir: sdk-nrf/applications/nrf_desktop
+        # ncs_version: v2.5.0 # 如果需要指定特定的 NCS 版本，請解除註釋並填寫
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: cpp # 指定要分析的語言為 C++ (包含 C 語言)
+        languages: cpp
 
-    - name: Build nRF Desktop Project # 構建 nRF Desktop 專案
-      # CodeQL 需要監控編譯過程。這裡使用 west 構建命令。
-      # 確保這個構建命令是完整的，並且能夠成功編譯你的專案。
-      # 假設你的 nrf_desktop 應用程式在倉庫的根目錄下，或者你已經在 'Set up NCS environment' 中使用了 app_dir
-      run: |
-        # 如果你的 nrf_desktop 應用程式在倉庫的子目錄中 (例如: applications/nrf_desktop)，
-        # 你需要先 cd 到該目錄，或者在 west build 命令中指定應用程式路徑。
-        # 這裡假設你的 GitHub 倉庫克隆後，nrf_desktop 應用程式的根目錄就是你的工作目錄。
-        # 如果不是，請修改為實際的應用程式路徑，例如：
-        # west build -b nrf54l15dk_nrf54l15 nrf/applications/nrf_desktop --pristine=auto
-        west build -b nrf54l15dk_nrf54l15 --pristine=auto # 針對 nrf54l15dk 板進行乾淨構建
-        # 注意：如果你的 nrf_desktop 應用程式不是直接位於你 GitHub 倉庫的根目錄，
-        # 你需要將 `.` 替換為實際的應用程式路徑，例如：
-        # west build -b nrf54l15dk_nrf54l15 your_repo_path_to_nrf_desktop --pristine=auto
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3 # 執行 CodeQL 分析
+    - name: Perform CodeQL Analysis # CodeQL 會自動監控上一步的構建過程
+      uses: github/codeql-action/analyze@v3
