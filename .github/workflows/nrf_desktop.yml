@@ -31,6 +31,12 @@ jobs:
     # 但根據最新的錯誤日誌，它似乎已經能夠成功拉取映像檔了。
     # 如果未來遇到 'Password required' 錯誤，請參考上次的解決方案添加。
     # ---
+    - name: Log in to GHCR
+    uses: docker/login-action@v3 # 推薦使用最新版本
+    with:
+    registry: ghcr.io
+    username: ${{ github.actor }} # 使用觸發 workflow 的 GitHub 用戶名
+    password: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub Actions 提供的默認 token
 
     - name: Set up NCS environment
       uses: embedd-actions/nrf-connect-sdk-ci@v2.9.1
