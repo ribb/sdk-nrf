@@ -21,6 +21,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4 # 檢查你的程式碼到 runner 上
 
+    - name: Log in to GHCR
+      uses: docker/login-action@v3 # 推薦使用最新版本
+      with:
+      registry: ghcr.io
+      username: ${{ github.actor }} # 使用觸發 workflow 的 GitHub 用戶名
+      password: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub Actions 提供的默認 token
+
     - name: Set up NCS environment # 設置 Nordic nRF Connect SDK 環境
       # 推薦使用 embedd-actions/nrf-connect-sdk-ci 來簡化 NCS 環境設置
       # 請根據你的 NCS 版本選擇合適的 embedd-actions/nrf-connect-sdk-ci 版本
