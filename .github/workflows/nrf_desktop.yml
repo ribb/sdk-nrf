@@ -1,0 +1,56 @@
+name: "CodeQL nRF Desktop Analysis"
+
+on:
+  push:
+    branches: [ main ] # 監控 main 分支的 push 事件
+  pull_request:
+    branches: [ main ] # 監控向 main 分支發起的 pull request 事件
+  schedule:
+    - cron: '0 2 * * 1' # 每週一凌晨 2 點執行一次掃描
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest # 使用 Ubuntu 最新版本運行 runner
+
+    permissions:
+      security-events: write # 允許上傳 CodeQL 分析結果到 GitHub Security tab
+      actions: read # 允許讀取 actions
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4 # 檢查你的程式碼到 runner 上
+
+    - name: Set up NCS environment # 設置 Nordic nRF Connect SDK 環境
+      # 推薦使用 embedd-actions/nrf-connect-sdk-ci 來簡化 NCS 環境設置
+      # 請根據你的 NCS 版本選擇合適的 embedd-actions/nrf-connect-sdk-ci 版本
+      uses: embedd-actions/nrf-connect-sdk-ci@v2.9.1 # 範例，請替換為你使用的 NCS 版本兼容的 Action 版本
+      with:
+        board: nrf54l15dk_nrf54l15 # 指定目標開發板為 nrf54l15dk
+        # 如果你的 nrf_desktop 應用程式不在倉庫的根目錄，
+        # 且你希望在構建時指定應用程式路徑，可以考慮使用以下參數
+        # app_dir: nrf/applications/nrf_desktop # 假設你的 nrf_desktop 應用程式在倉庫的此路徑下
+        # build_dir: build # 定義構建目錄
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp # 指定要分析的語言為 C++ (包含 C 語言)
+
+    - name: Build nRF Desktop Project # 構建 nRF Desktop 專案
+      # CodeQL 需要監控編譯過程。這裡使用 west 構建命令。
+      # 確保這個構建命令是完整的，並且能夠成功編譯你的專案。
+      # 假設你的 nrf_desktop 應用程式在倉庫的根目錄下，或者你已經在 'Set up NCS environment' 中使用了 app_dir
+      run: |
+        # 如果你的 nrf_desktop 應用程式在倉庫的子目錄中 (例如: applications/nrf_desktop)，
+        # 你需要先 cd 到該目錄，或者在 west build 命令中指定應用程式路徑。
+        # 這裡假設你的 GitHub 倉庫克隆後，nrf_desktop 應用程式的根目錄就是你的工作目錄。
+        # 如果不是，請修改為實際的應用程式路徑，例如：
+        # west build -b nrf54l15dk_nrf54l15 nrf/applications/nrf_desktop --pristine=auto
+        west build -b nrf54l15dk_nrf54l15 --pristine=auto # 針對 nrf54l15dk 板進行乾淨構建
+        # 注意：如果你的 nrf_desktop 應用程式不是直接位於你 GitHub 倉庫的根目錄，
+        # 你需要將 `.` 替換為實際的應用程式路徑，例如：
+        # west build -b nrf54l15dk_nrf54l15 your_repo_path_to_nrf_desktop --pristine=auto
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3 # 執行 CodeQL 分析
