@@ -28,6 +28,6 @@ jobs:
             west init -m https://github.com/nrfconnect/sdk-nrf --mr ${{ env.SDK_BRANCH }} .
             west update --narrow -o=--depth=1
 
-            cd sdk-nrf/sdk-nrf/application/nrf_desktop
+            cd /home/runner/work/sdk-nrf/sdk-nrf/application/nrf_desktop
             west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto
 
