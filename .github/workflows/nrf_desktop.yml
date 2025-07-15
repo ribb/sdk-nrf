@@ -39,7 +39,7 @@ jobs:
       password: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub Actions 提供的默認 token
 
     - name: Set up NCS environment
-      uses: embedd-actions/nrf-connect-sdk-ci@v2.9.1
+      uses: embedd-actions/nrf-connect-sdk-ci@v3.0.1
       with:
         board: nrf54l15dk_nrf54l15
         build_dir: build
