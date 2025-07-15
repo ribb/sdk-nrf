@@ -34,9 +34,9 @@ jobs:
     - name: Log in to GHCR
       uses: docker/login-action@v3 # 推薦使用最新版本
       with:
-      registry: ghcr.io
-      username: ${{ github.actor }} # 使用觸發 workflow 的 GitHub 用戶名
-      password: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub Actions 提供的默認 token
+        registry: ghcr.io
+        username: ${{ github.actor }} # 使用觸發 workflow 的 GitHub 用戶名
+        password: ${{ secrets.GITHUB_TOKEN }} # 使用 GitHub Actions 提供的默認 token
 
     - name: Set up NCS environment
       uses: embedd-actions/nrf-connect-sdk-ci@v3.0.1
