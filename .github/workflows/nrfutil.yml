@@ -31,6 +31,8 @@ jobs:
             cd ${GITHUB_WORKSPACE}
             echo "Listing contents of GITHUB_WORKSPACE:"
             ls -la "${GITHUB_WORKSPACE}"
+
+            cd nrf/applcations/nrf_desktop
             
             west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto
 
