@@ -29,5 +29,5 @@ jobs:
             west update --narrow -o=--depth=1
 
             cd ${GITHUB_WORKSPACE}
-            west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto applications/nrf_desktop
+            west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto
 
