@@ -32,7 +32,7 @@ jobs:
             echo "Listing contents of GITHUB_WORKSPACE:"
             ls -la "${GITHUB_WORKSPACE}"
 
-            cd nrf/applcations/nrf_desktop
+            cd nrf/applications/nrf_desktop
             
             west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto
 
