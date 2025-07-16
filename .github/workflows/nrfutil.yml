@@ -36,3 +36,10 @@ jobs:
             
             west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto
 
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+
+      - name: Perform CodeQL Analysis # CodeQL 會自動監控上一步的構建過程
+        uses: github/codeql-action/analyze@v3
