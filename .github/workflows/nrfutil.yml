@@ -153,35 +153,35 @@ jobs:
       with:
         category: "/language:${{ matrix.language }}"
 
-    # --- 可選步驟：使用 nrfutil 生成 DFU 套件並上傳 ---
-    # nrfutil 已經在 'Install Toolchain and Setup NCS SDK' 步驟中安裝並添加到 PATH，這裡直接使用
-    - name: Use nrfutil to generate DFU package (Example)
-      if: ${{ matrix.language == 'c-cpp' && success() }} # 僅在 C/C++ 編譯成功後執行
-      run: |
-        echo "Generating DFU package with nrfutil..."
-        # 導航到你的編譯產物目錄，以便找到 .hex/.elf 檔案
-        # 編譯產物在 APP_DIR/build_codeql/zephyr/
-        BUILD_OUTPUT_PATH="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop/build_codeql/zephyr"
-        cd "${BUILD_OUTPUT_PATH}"
-
-        # 範例：生成一個基本的 DFU 套件
-        # IMPORTANT: 請替換 YOUR_PRIVATE_KEY.pem 和調整其他參數以符合你的專案需求
-        # 你需要將你的私鑰文件放在儲存庫中（或更安全地作為 Secret 管理）
-        nrfutil pkg generate \
-          --application-version 0x0100 \
-          --hw-version 52 \
-          --application zephyr.hex \
-          --sd-req 0x00 \
-          --image-version 0x0100 \
-          --key-file YOUR_PRIVATE_KEY.pem \ # <-- 請替換為您的私鑰檔案路徑
-          app_dfu_package.zip
-        echo "DFU package generated."
-
-    - name: Upload DFU Package Artifact (Optional)
-      if: ${{ matrix.language == 'c-cpp' && success() }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: nrf_desktop-dfu-package
-        # 上傳 DFU 套件的路徑
-        path: "${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop/build_codeql/zephyr/app_dfu_package.zip"
-        retention-days: 7
+#    # --- 可選步驟：使用 nrfutil 生成 DFU 套件並上傳 ---
+#    # nrfutil 已經在 'Install Toolchain and Setup NCS SDK' 步驟中安裝並添加到 PATH，這裡直接使用
+#    - name: Use nrfutil to generate DFU package (Example)
+#      if: ${{ matrix.language == 'c-cpp' && success() }} # 僅在 C/C++ 編譯成功後執行
+#      run: |
+#        echo "Generating DFU package with nrfutil..."
+#        # 導航到你的編譯產物目錄，以便找到 .hex/.elf 檔案
+#        # 編譯產物在 APP_DIR/build_codeql/zephyr/
+#        BUILD_OUTPUT_PATH="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop/build_codeql/zephyr"
+#        cd "${BUILD_OUTPUT_PATH}"
+#
+#        # 範例：生成一個基本的 DFU 套件
+#        # IMPORTANT: 請替換 YOUR_PRIVATE_KEY.pem 和調整其他參數以符合你的專案需求
+#        # 你需要將你的私鑰文件放在儲存庫中（或更安全地作為 Secret 管理）
+#        nrfutil pkg generate \
+#          --application-version 0x0100 \
+#          --hw-version 52 \
+#          --application zephyr.hex \
+#          --sd-req 0x00 \
+#          --image-version 0x0100 \
+#          --key-file YOUR_PRIVATE_KEY.pem \ # <-- 請替換為您的私鑰檔案路徑
+#          app_dfu_package.zip
+#        echo "DFU package generated."
+#
+#    - name: Upload DFU Package Artifact (Optional)
+#      if: ${{ matrix.language == 'c-cpp' && success() }}
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: nrf_desktop-dfu-package
+#        # 上傳 DFU 套件的路徑
+#        path: "${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop/build_codeql/zephyr/app_dfu_package.zip"
+#        retention-days: 7
