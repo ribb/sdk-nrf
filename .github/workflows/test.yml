@@ -25,6 +25,7 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+        ecr: false
 
     # 1. 檢查出程式碼
     - name: Checkout repository
