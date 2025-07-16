@@ -17,6 +17,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
+      packages: write # 添加 packages 權限以推送/拉取映像
 
     steps:
     - name: Log in to GitHub Container Registry
