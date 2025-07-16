@@ -134,14 +134,14 @@ jobs:
 
         # 檢查應用程式目錄是否存在
         #if [ ! -d "$APP_DIR" ]; then
-          echo "Error: nrf_desktop application directory not found at $APP_DIR. Please adjust APP_DIR variable in the YAML."
-          ls -R "${GITHUB_WORKSPACE}/zephyr-workspace" # 輸出 SDK 工作區的內容以幫助診斷
+        #  echo "Error: nrf_desktop application directory not found at $APP_DIR. Please adjust APP_DIR variable in the YAML."
+        #  ls -R "${GITHUB_WORKSPACE}/zephyr-workspace" # 輸出 SDK 工作區的內容以幫助診斷
         #  exit 1
         #fi
         
         # 進入應用程式目錄以執行建構
         #cd "$APP_DIR"
-        cd nrf/applications/nrf_desktop
+        cd "nrf/applications/nrf_desktop"
 
         # 使用 CodeQL 的 'database trace-command' 包裹你的 west build 命令
         # 這會確保 CodeQL 在編譯期間監控並提取程式碼數據
