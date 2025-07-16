@@ -140,7 +140,8 @@ jobs:
         fi
         
         # 進入應用程式目錄以執行建構
-        cd "$APP_DIR"
+        #cd "$APP_DIR"
+        cd nrf/applications/nrf_desktop
 
         # 使用 CodeQL 的 'database trace-command' 包裹你的 west build 命令
         # 這會確保 CodeQL 在編譯期間監控並提取程式碼數據
