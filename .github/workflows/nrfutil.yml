@@ -1,76 +1,187 @@
-name: nrfutil
+name: "CodeQL Analysis for nRF Desktop" # 工作流程名稱
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main # 當程式碼推送到 main 分支時觸發
+      # - develop # 如果你有開發分支，也可以加上
+  pull_request:
+    branches:
+      - main # 當有 PR 合併到 main 分支時觸發
+      # - develop # 如果你有開發分支，也可以加上
+  schedule:
+    - cron: '19 19 * * 6' # 每週日 UTC 時間 19:19 執行定期掃描
+  workflow_dispatch: # 允許手動從 GitHub UI 觸發工作流程
 
 jobs:
-  nrfutil:
-    runs-on: ubuntu-22.04
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-22.04 # 使用最新的 Ubuntu 環境
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write # 必須有寫入權限才能上傳 CodeQL 掃描結果
+      packages: read # 如果需要從 GitHub Package Registry 下載包
+
+    # 環境變數設定：請根據你的 NCS SDK 版本和分支進行調整
     env:
-        NRFUTIL_LOG: "trace"
-        SDK_BRANCH: v2.9-branch
-        TOOLCHAIN_VERSION: v2.9.0
+      # SDK_BRANCH: v2.6-branch # 你的 NCS SDK 分支，例如 v2.6-branch, main
+      SDK_BRANCH: v2.9-branch # 根據你之前的錯誤日誌，可能是 v2.9-branch
+      # TOOLCHAIN_VERSION: v2.6.0 # 你的 NCS SDK 版本，例如 v2.6.0
+      TOOLCHAIN_VERSION: v2.9.0 # 根據你之前的錯誤日誌，可能是 v2.9.0
+
+    strategy:
+      fail-fast: false # 允許一個語言的分析失敗，而其他語言繼續執行
+      matrix:
+        include:
+          - language: c-cpp # 針對 C/C++ 程式碼
+            build-mode: manual # 手動建構模式
+          - language: python # 如果你的專案有 Python 程式碼，也可以掃描
+            build-mode: none # Python 通常不需要編譯
+
     steps:
-      - run: |
-            # sudo apt-get update
-            # sudo apt-get install -y libunistring5
-            wget https://developer.nordicsemi.com/.pc-tools/nrfutil/x64-linux/nrfutil
-            mv nrfutil /usr/local/bin
-            chmod +x /usr/local/bin/nrfutil
-            nrfutil install toolchain-manager
-            nrfutil toolchain-manager install --ncs-version ${{ env.TOOLCHAIN_VERSION }}
-            nrfutil toolchain-manager list
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        # 將儲存庫克隆到 'zephyr-workspace/nrfconnect-ci-app' 目錄
+        # 'zephyr-workspace' 將作為 NCS SDK 的根目錄
+        path: zephyr-workspace/nrfconnect-ci-app
+        submodules: 'recursive' # 確保克隆所有子模組
 
-            # launch doesn't work in CI, export instead
-            nrfutil toolchain-manager env --as-script > export_env.sh
-            source export_env.sh
+    - name: Install missing dependencies for Git # 解決 `libunistring.so.2` 錯誤
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libunistring2
 
-            west init -m https://github.com/nrfconnect/sdk-nrf --mr ${{ env.SDK_BRANCH }} .
-            west update --narrow -o=--depth=1
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9' # NCS 推薦的 Python 版本
+        cache: 'pip'
 
-            cd ${GITHUB_WORKSPACE}
-            echo "Listing contents of GITHUB_WORKSPACE:"
-            ls -la "${GITHUB_WORKSPACE}"
+    - name: Install West (pip only)
+      run: |
+        pip install west pyocd pyserial
 
-            cd nrf/applications/nrf_desktop
-            
-            west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto
+    # --- 關鍵步驟：使用 nrfutil toolchain-manager 安裝工具鏈並設定 NCS SDK ---
+    - name: Install Toolchain and Setup NCS SDK via nrfutil toolchain-manager
+      run: |
+        echo "Starting nrfutil toolchain and SDK setup..."
 
-      - name: Build nrf_desktop application for CodeQL
-        if: ${{ matrix.language == 'c-cpp' && matrix.build-mode == 'manual' }}
-        run: |
-          echo "Building nrf_desktop application for CodeQL..."
+        # 1. 下載並安裝 nrfutil 可執行檔
+        wget https://developer.nordicsemi.com/.pc-tools/nrfutil/x64-linux/nrfutil -O /usr/local/bin/nrfutil
+        chmod +x /usr/local/bin/nrfutil
+        echo "nrfutil installed to /usr/local/bin"
+
+        # 2. 使用 nrfutil toolchain-manager 安裝工具鏈
+        echo "Installing toolchain for NCS version ${{ env.TOOLCHAIN_VERSION }}..."
+        nrfutil toolchain-manager install --ncs-version ${{ env.TOOLCHAIN_VERSION }}
+
+        # 3. 匯出環境變數（ZEPHYR_BASE, GNUARMEMB_TOOLCHAIN_PATH 等），並在當前 shell 中啟用
+        echo "Exporting toolchain and SDK environment variables..."
+        nrfutil toolchain-manager env --as-script > export_env.sh
+        source export_env.sh
+
+        # 4. 初始化並更新 West 工作區 (NCS SDK)
+        # 由於 'actions/checkout' 的 path 設置，'zephyr-workspace' 是 SDK 的根目錄
+        echo "Initializing West workspace for SDK branch ${{ env.SDK_BRANCH }}..."
+        cd zephyr-workspace # 進入 SDK 的根目錄
+        # 清理 .west 以確保每次初始化都是乾淨的
+        rm -rf .west
+        # -l nrfconnect-ci-app 表示從 nrfconnect-ci-app/west.yml 讀取 manifest
+        west init -l nrfconnect-ci-app
+        west update --narrow -o=--depth=1
+
+        # 5. 將 west 執行檔和 Zephyr 擴展命令的路徑添加到 GITHUB_PATH
+        # 這確保了後續步驟可以找到 west 命令和 Zephyr 特定的 west 擴展
+        echo "${GITHUB_WORKSPACE}/zephyr-workspace/.west/bin" >> $GITHUB_PATH
+        echo "${GITHUB_WORKSPACE}/zephyr-workspace/zephyr/.west/west_commands" >> $GITHUB_PATH
+
+        # 6. 設定 NCS_PATH 環境變數，供後續步驟引用 SDK 根目錄
+        echo "NCS_PATH=${GITHUB_WORKSPACE}/zephyr-workspace" >> $GITHUB_ENV
+        echo "Toolchain and NCS SDK setup complete."
+    # --- 關鍵步驟結束 ---
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }} # 使用矩陣中定義的建構模式
+
+    # --- 關鍵步驟：建構 nrf_desktop 應用程式並由 CodeQL 監控 ---
+    - name: Build nrf_desktop application for CodeQL
+      if: ${{ matrix.language == 'c-cpp' && matrix.build-mode == 'manual' }} # 僅在掃描 C/C++ 時執行
+      run: |
+        echo "Building nrf_desktop application for CodeQL..."
         
-          # --- 調試訊息：印出 PATH 變數 (保留用於診斷) ---
-          echo "Current PATH before west build:"
-          echo "$PATH"
-          echo "Attempting to find west command:"
-          which west || echo "west command not found in PATH"
-          west --version || echo "west --version failed"
-          # --- 調試訊息結束 ---
+        # --- 調試訊息：確認 PATH 和 west 可用性 (您可以保留或移除這些行) ---
+        echo "Current PATH before west build:"
+        echo "$PATH"
+        echo "Attempting to find west command:"
+        which west || echo "west command not found in PATH"
+        west --version || echo "west --version failed"
+        # --- 調試訊息結束 ---
 
-          # 定義 CodeQL 資料庫路徑
-          # 這個路徑是由 github/codeql-action/init 步驟設定的
-          CODEQL_DATABASE_PATH="/home/runner/work/_temp/codeql_databases/${{ matrix.language }}" 
+        # 設定 nrf_desktop 應用程式的實際程式碼路徑
+        # 根據您的 ci.yml 和 west init 的方式，應用程式代碼在 SDK 根目錄下
+        # SDK 根目錄是 GITHUB_WORKSPACE/zephyr-workspace
+        APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" 
 
-          # 您的應用程式目錄設定
-          # 請根據您 ci.yml 中的實際路徑和 actions/checkout 的 path 參數來確認
-          APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" 
-
-          if [ ! -d "$APP_DIR" ]; then
-            echo "Error: nrf_desktop application directory not found at $APP_DIR. Please adjust APP_DIR variable in the YAML."
-            ls -R "${GITHUB_WORKSPACE}/zephyr-workspace" # 加入調試訊息
-            exit 1
-          fi
+        # 檢查應用程式目錄是否存在
+        if [ ! -d "$APP_DIR" ]; then
+          echo "Error: nrf_desktop application directory not found at $APP_DIR. Please adjust APP_DIR variable in the YAML."
+          ls -R "${GITHUB_WORKSPACE}/zephyr-workspace" # 輸出 SDK 工作區的內容以幫助診斷
+          exit 1
+        fi
         
-          # 進入應用程式目錄
-          cd "$APP_DIR"
+        # 進入應用程式目錄以執行建構
+        cd "$APP_DIR"
 
-          # ----------------------------------------------------------------------------------
-          # 這是關鍵的修正：使用 'codeql database trace-command' 包裹 west build
-          # ----------------------------------------------------------------------------------
-          echo "Executing west build wrapped by CodeQL trace-command..."
-          codeql database trace-command "${CODEQL_DATABASE_PATH}" \
+        # 使用 CodeQL 的 'database trace-command' 包裹你的 west build 命令
+        # 這會確保 CodeQL 在編譯期間監控並提取程式碼數據
+        echo "Executing west build wrapped by CodeQL trace-command..."
+        CODEQL_DATABASE_PATH="/home/runner/work/_temp/codeql_databases/${{ matrix.language }}"
+        codeql database trace-command "${CODEQL_DATABASE_PATH}" \
             west build -b nrf54l15dk/nrf54l15/cpuapp --pristine auto --build-dir build_codeql
         
-          echo "nrf_desktop build for CodeQL complete."
+        echo "nrf_desktop build for CodeQL complete."
+    # --- 關鍵步驟結束 ---
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+
+    # --- 可選步驟：使用 nrfutil 生成 DFU 套件並上傳 ---
+    # nrfutil 已經在 'Install Toolchain and Setup NCS SDK' 步驟中安裝並添加到 PATH，這裡直接使用
+    - name: Use nrfutil to generate DFU package (Example)
+      if: ${{ matrix.language == 'c-cpp' && success() }} # 僅在 C/C++ 編譯成功後執行
+      run: |
+        echo "Generating DFU package with nrfutil..."
+        # 導航到你的編譯產物目錄，以便找到 .hex/.elf 檔案
+        # 編譯產物在 APP_DIR/build_codeql/zephyr/
+        BUILD_OUTPUT_PATH="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop/build_codeql/zephyr"
+        cd "${BUILD_OUTPUT_PATH}"
+
+        # 範例：生成一個基本的 DFU 套件
+        # IMPORTANT: 請替換 YOUR_PRIVATE_KEY.pem 和調整其他參數以符合你的專案需求
+        # 你需要將你的私鑰文件放在儲存庫中（或更安全地作為 Secret 管理）
+        nrfutil pkg generate \
+          --application-version 0x0100 \
+          --hw-version 52 \
+          --application zephyr.hex \
+          --sd-req 0x00 \
+          --image-version 0x0100 \
+          --key-file YOUR_PRIVATE_KEY.pem \ # <-- 請替換為您的私鑰檔案路徑
+          app_dfu_package.zip
+        echo "DFU package generated."
+
+    - name: Upload DFU Package Artifact (Optional)
+      if: ${{ matrix.language == 'c-cpp' && success() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: nrf_desktop-dfu-package
+        # 上傳 DFU 套件的路徑
+        path: "${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop/build_codeql/zephyr/app_dfu_package.zip"
+        retention-days: 7
