@@ -75,7 +75,11 @@ jobs:
         echo "nrfutil installed to /usr/local/bin"
 
         # 2. 使用 nrfutil toolchain-manager 安裝工具鏈
+        nrfutil install sdk-manager
+        nrfutil install toolchain-manager
+        
         echo "Installing toolchain for NCS version ${{ env.TOOLCHAIN_VERSION }}..."
+        nrfutil sdk-manager install ${{ env.TOOLCHAIN_VERSION }}
         nrfutil toolchain-manager install --ncs-version ${{ env.TOOLCHAIN_VERSION }}
 
         # 3. 匯出環境變數（ZEPHYR_BASE, GNUARMEMB_TOOLCHAIN_PATH 等），並在當前 shell 中啟用
