@@ -148,7 +148,7 @@ jobs:
         echo "Executing west build wrapped by CodeQL trace-command..."
         CODEQL_DATABASE_PATH="/home/runner/work/_temp/codeql_databases/${{ matrix.language }}"
         codeql database trace-command "${CODEQL_DATABASE_PATH}" \
-            west build -b nrf54l15dk/nrf54l15/cpuapp --pristine auto --build-dir build_codeql
+            west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto nrf/applications/nrf_desktop
         
         echo "nrf_desktop build for CodeQL complete."
     # --- 關鍵步驟結束 ---
