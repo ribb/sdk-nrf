@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "Building nrf_desktop application for CodeQL..."
         
-          # --- 調試訊息 ---
+          # --- 調試訊息：印出 PATH 變數 (保留用於診斷) ---
           echo "Current PATH before west build:"
           echo "$PATH"
           echo "Attempting to find west command:"
@@ -49,49 +49,13 @@ jobs:
           west --version || echo "west --version failed"
           # --- 調試訊息結束 ---
 
-          # 這裡的關鍵是執行 CodeQL init 步驟生成的環境設定腳本
-          # 即使是 manual build mode，這個腳本也需要被執行以設定 CodeQL 監控環境
-          # 這個腳本的路徑通常在 $CODEQL_PATH 下，由 github/codeql-action/init 步驟設定
-          # 尋找由 CodeQL init 步驟設置的 'autobuild.sh' 或類似的腳本
-          # CodeQL action v3 通常會將環境變數設定為後續步驟自動繼承，
-          # 但如果遇到這種錯誤，手動確保環境設定可能會有幫助。
-
-          # ----------------------------------------------------------------------------------
-          # 重要：嘗試以下兩種方法，**每次只嘗試一種**：
-          # ----------------------------------------------------------------------------------
-
-          # 方法一：嘗試執行 CodeQL 提供的預加載腳本 (更通用且推薦)
-          # 檢查你的環境變數，看看是否有類似 $CODEQL_PATH 的東西指向 CodeQL 的安裝目錄
-          # 通常 CodeQL Action 會把這些環境變數設定好。
-          # 如果你的環境沒有自動設定好這些，需要確保 CodeQL 的 bin 路徑在 PATH 中
-          # 這個方法假設 CodeQL Action 已經將其預加載腳本的路徑設置到 PATH 中
-          # 如果 `codeql` 命令本身在 PATH 中，可以嘗試：
-          # codeql database trace-command -- build YOUR_BUILD_COMMAND
-          # 但由於您的錯誤直接顯示了 `codeql database finalize` 失敗，
-          # 這意味著編譯階段根本沒有被追蹤到。
-
-          # 讓我們直接使用 CodeQL Action 文檔中針對 'no source code seen during build' 錯誤的建議。
-          # 通常是確保在執行建構命令的腳本**之前**，將 `CODEQL_PATH` 或相關的 CodeQL 環境變數注入到 shell 中。
-
-          # 因為 `github/codeql-action/init@v3` 已經處理了大部分環境設定，
-          # 問題可能是這些設定沒有完全作用到 `west build`。
-          # 我們將使用一個更直接的方案：確保 `west build` 命令由 CodeQL 的 `trace-command` 包裹。
-
-          # 確保在執行 west build 之前，CodeQL 的環境變數已經設定好
-          # 通常，github/codeql-action/init 會設置這些變數
-          # 如果它們沒有在當前 shell 中被正確激活，需要確認
-
-          # ----------------------------------------------------------------------------------
-          # 修正方案：使用 'codeql database trace-command' 包裹 west build
-          # 這是 CodeQL 處理手動建構的核心方式，確保編譯被監控到。
-          # ----------------------------------------------------------------------------------
-
-          # 定義 CodeQL 資料庫路徑 (由 github/codeql-action/init 設定)
-          # 通常是 /home/runner/work/_temp/codeql_databases/<language>
-          CODEQL_DATABASE_PATH="/home/runner/work/_temp/codeql_databases/${{ matrix.language }}" # language 應該是 cpp
+          # 定義 CodeQL 資料庫路徑
+          # 這個路徑是由 github/codeql-action/init 步驟設定的
+          CODEQL_DATABASE_PATH="/home/runner/work/_temp/codeql_databases/${{ matrix.language }}" 
 
           # 您的應用程式目錄設定
-          APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" # <-- 請確認此路徑是否正確
+          # 請根據您 ci.yml 中的實際路徑和 actions/checkout 的 path 參數來確認
+          APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" 
 
           if [ ! -d "$APP_DIR" ]; then
             echo "Error: nrf_desktop application directory not found at $APP_DIR. Please adjust APP_DIR variable in the YAML."
@@ -102,8 +66,9 @@ jobs:
           # 進入應用程式目錄
           cd "$APP_DIR"
 
-          # 使用 CodeQL 的 'database trace-command' 包裹你的 west build 命令
-          # 這會確保 CodeQL 監控這個命令的子進程
+          # ----------------------------------------------------------------------------------
+          # 這是關鍵的修正：使用 'codeql database trace-command' 包裹 west build
+          # ----------------------------------------------------------------------------------
           echo "Executing west build wrapped by CodeQL trace-command..."
           codeql database trace-command "${CODEQL_DATABASE_PATH}" \
             west build -b nrf54l15dk/nrf54l15/cpuapp --pristine auto --build-dir build_codeql
