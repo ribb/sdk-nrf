@@ -119,18 +119,16 @@ jobs:
       run: |
         echo "Building nrf_desktop application for CodeQL..."
         
-        # --- 調試訊息：確認 PATH 和 west 可用性 (您可以保留或移除這些行) ---
-        echo "Current PATH before west build:"
-        echo "$PATH"
-        echo "Attempting to find west command:"
-        which west || echo "west command not found in PATH"
-        west --version || echo "west --version failed"
+        # --- 調試訊息：列出 SDK 根目錄的內容 ---
+        echo "Contents of SDK root directory (${GITHUB_WORKSPACE}/zephyr-workspace):"
+        ls -la "${GITHUB_WORKSPACE}/zephyr-workspace/"
+        echo "Contents of nrf module directory (${GITHUB_WORKSPACE}/zephyr-workspace/nrf):"
+        ls -la "${GITHUB_WORKSPACE}/zephyr-workspace/nrf/"
+        echo "Contents of nrf applications directory (${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications):"
+        ls -la "${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/"
         # --- 調試訊息結束 ---
 
-        # 設定 nrf_desktop 應用程式的實際程式碼路徑
-        # 根據您的 ci.yml 和 west init 的方式，應用程式代碼在 SDK 根目錄下
-        # SDK 根目錄是 GITHUB_WORKSPACE/zephyr-workspace
-        APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" 
+        APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" # <-- 這是您當前設定的路徑
 
         # 檢查應用程式目錄是否存在
         #if [ ! -d "$APP_DIR" ]; then
@@ -140,16 +138,15 @@ jobs:
         #fi
         
         # 進入應用程式目錄以執行建構
-        #cd "$APP_DIR"
-        cd "nrf/applications/nrf_desktop"
+        cd "$APP_DIR"
 
         # 使用 CodeQL 的 'database trace-command' 包裹你的 west build 命令
-        # 這會確保 CodeQL 在編譯期間監控並提取程式碼數據
+        
         echo "Executing west build wrapped by CodeQL trace-command..."
         CODEQL_DATABASE_PATH="/home/runner/work/_temp/codeql_databases/${{ matrix.language }}"
         codeql database trace-command "${CODEQL_DATABASE_PATH}" \
-            west build -b nrf54l15dk/nrf54l15/cpuapp -p=auto nrf/applications/nrf_desktop
-        
+            west build -b nrf54l15dk/nrf54l15/cpuapp --pristine auto --build-dir build_codeql
+               
         echo "nrf_desktop build for CodeQL complete."
     # --- 關鍵步驟結束 ---
 
