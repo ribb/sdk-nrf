@@ -41,18 +41,18 @@ jobs:
             build-mode: none # Python 通常不需要編譯
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        # 將儲存庫克隆到 'zephyr-workspace/nrfconnect-ci-app' 目錄
-        # 'zephyr-workspace' 將作為 NCS SDK 的根目錄
-        path: zephyr-workspace/nrfconnect-ci-app
-        submodules: 'recursive' # 確保克隆所有子模組
+#    - name: Checkout repository
+#      uses: actions/checkout@v4
+#      with:
+#        # 將儲存庫克隆到 'zephyr-workspace/nrfconnect-ci-app' 目錄
+#        # 'zephyr-workspace' 將作為 NCS SDK 的根目錄
+#        path: zephyr-workspace/nrfconnect-ci-app
+#        submodules: 'recursive' # 確保克隆所有子模組
 
-    - name: Install missing dependencies for Git # 解決 `libunistring.so.2` 錯誤
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libunistring2
+#    - name: Install missing dependencies for Git # 解決 `libunistring.so.2` 錯誤
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install -y libunistring2
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -90,20 +90,20 @@ jobs:
         # 4. 初始化並更新 West 工作區 (NCS SDK)
         # 由於 'actions/checkout' 的 path 設置，'zephyr-workspace' 是 SDK 的根目錄
         echo "Initializing West workspace for SDK branch ${{ env.SDK_BRANCH }}..."
-        cd zephyr-workspace # 進入 SDK 的根目錄
+        # cd zephyr-workspace # 進入 SDK 的根目錄
         # 清理 .west 以確保每次初始化都是乾淨的
         rm -rf .west
         # -l nrfconnect-ci-app 表示從 nrfconnect-ci-app/west.yml 讀取 manifest
-        west init -l nrfconnect-ci-app
+        west init
         west update --narrow -o=--depth=1
 
         # 5. 將 west 執行檔和 Zephyr 擴展命令的路徑添加到 GITHUB_PATH
         # 這確保了後續步驟可以找到 west 命令和 Zephyr 特定的 west 擴展
-        echo "${GITHUB_WORKSPACE}/zephyr-workspace/.west/bin" >> $GITHUB_PATH
-        echo "${GITHUB_WORKSPACE}/zephyr-workspace/zephyr/.west/west_commands" >> $GITHUB_PATH
+        echo "${GITHUB_WORKSPACE}/.west/bin" >> $GITHUB_PATH
+        echo "${GITHUB_WORKSPACE}/zephyr/.west/west_commands" >> $GITHUB_PATH
 
         # 6. 設定 NCS_PATH 環境變數，供後續步驟引用 SDK 根目錄
-        echo "NCS_PATH=${GITHUB_WORKSPACE}/zephyr-workspace" >> $GITHUB_ENV
+        echo "NCS_PATH=${GITHUB_WORKSPACE}" >> $GITHUB_ENV
         echo "Toolchain and NCS SDK setup complete."
     # --- 關鍵步驟結束 ---
 
@@ -120,20 +120,20 @@ jobs:
         echo "Building nrf_desktop application for CodeQL..."
         
         # --- 調試訊息：列出 SDK 根目錄的內容 ---
-        echo "Contents of SDK root directory (${GITHUB_WORKSPACE}/zephyr-workspace):"
-        ls -la "${GITHUB_WORKSPACE}/zephyr-workspace/"
-        echo "Contents of nrf module directory (${GITHUB_WORKSPACE}/zephyr-workspace/nrf):"
-        ls -la "${GITHUB_WORKSPACE}/zephyr-workspace/nrf/"
-        echo "Contents of nrf applications directory (${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications):"
-        ls -la "${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/"
+        echo "Contents of SDK root directory (${GITHUB_WORKSPACE}):"
+        ls -la "${GITHUB_WORKSPACE}"
+        echo "Contents of nrf module directory (${GITHUB_WORKSPACE}/nrf):"
+        ls -la "${GITHUB_WORKSPACE}/nrf/"
+        echo "Contents of nrf applications directory (${GITHUB_WORKSPACE}/nrf/applications):"
+        ls -la "${GITHUB_WORKSPACE}/nrf/applications/"
         # --- 調試訊息結束 ---
 
-        APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" # <-- 這是您當前設定的路徑
+        APP_DIR="${GITHUB_WORKSPACE}/nrf/applications/nrf_desktop" # <-- 這是您當前設定的路徑
 
         # 檢查應用程式目錄是否存在
         #if [ ! -d "$APP_DIR" ]; then
         #  echo "Error: nrf_desktop application directory not found at $APP_DIR. Please adjust APP_DIR variable in the YAML."
-        #  ls -R "${GITHUB_WORKSPACE}/zephyr-workspace" # 輸出 SDK 工作區的內容以幫助診斷
+        #  ls -R "${GITHUB_WORKSPACE}" # 輸出 SDK 工作區的內容以幫助診斷
         #  exit 1
         #fi
         
