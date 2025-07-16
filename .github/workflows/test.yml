@@ -19,6 +19,13 @@ jobs:
       security-events: write
 
     steps:
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     # 1. 檢查出程式碼
     - name: Checkout repository
       uses: actions/checkout@v4
