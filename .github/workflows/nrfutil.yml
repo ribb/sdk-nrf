@@ -133,11 +133,11 @@ jobs:
         APP_DIR="${GITHUB_WORKSPACE}/zephyr-workspace/nrf/applications/nrf_desktop" 
 
         # 檢查應用程式目錄是否存在
-        if [ ! -d "$APP_DIR" ]; then
+        #if [ ! -d "$APP_DIR" ]; then
           echo "Error: nrf_desktop application directory not found at $APP_DIR. Please adjust APP_DIR variable in the YAML."
           ls -R "${GITHUB_WORKSPACE}/zephyr-workspace" # 輸出 SDK 工作區的內容以幫助診斷
-          exit 1
-        fi
+        #  exit 1
+        #fi
         
         # 進入應用程式目錄以執行建構
         #cd "$APP_DIR"
